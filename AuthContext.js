@@ -37,6 +37,46 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // 🔐 Sign in
+  async function signIn(email, password) {
+    const { user, error } = await supabase.auth.signIn({
+      email,
+      password,
+    });
+
+    if (user) {
+      // Immediately store the authenticated user
+      setUser(user);
+
+      // Load the profile so display name and username are available
+      const loadedProfile = await fetchProfile(user.id);
+
+      // If no profile exists (e.g. the account was created elsewhere),
+      // create one so the rest of the app can rely on profile fields.
+      if (!loadedProfile) {
+        const defaultUsername = user.email
+          ? user.email.split('@')[0]
+          : 'anonymous';
+
+        await supabase.from('profiles').insert({
+          id: user.id,
+          username: defaultUsername,
+          display_name: defaultUsername,
+        });
+
+        // Immediately populate state with the newly created profile
+        setProfile({
+          id: user.id,
+          username: defaultUsername,
+          display_name: defaultUsername,
+          email: user.email,
+        });
+      }
+    }
+
+    return { error };
+  }
+
   // 🔐 Sign up
   const signUp = async (email, password, username) => {
     if (!username) {
@@ -50,6 +90,12 @@ export function AuthProvider({ children }) {
     );
 
     if (error) {
+      // If an account already exists for this email, treat the attempt as a
+      // regular sign in so the original username remains linked to the email.
+      if (error.message && error.message.toLowerCase().includes('already')) {
+        return await signIn(email, password);
+      }
+
       console.error('❌ Sign up error:', error);
       return { error };
     }
@@ -74,25 +120,6 @@ export function AuthProvider({ children }) {
 
     return { error: null };
   };
-
-  // 🔐 Sign in
-  const signIn = async (email, password) => {
-    const { user, error } = await supabase.auth.signIn({
-      email,
-      password,
-    });
-
-    if (user) {
-      // Immediately store the authenticated user
-      setUser(user);
-      // Load the profile so display name and username are available
-      await fetchProfile(user.id);
-    }
-
-    return { error };
-  };
-
-
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -111,8 +138,12 @@ export function AuthProvider({ children }) {
     if (!error && data) {
       // Merge the Supabase auth email so other screens can rely on it
       const authUser = supabase.auth.user();
-      setProfile({ ...data, email: authUser?.email });
+      const profileData = { ...data, email: authUser?.email };
+      setProfile(profileData);
+      return profileData;
     }
+
+    return null;
   };
 
   const value = {
