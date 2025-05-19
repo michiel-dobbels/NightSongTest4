@@ -8,6 +8,34 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null); // 🧠 includes username
   const [loading, setLoading] = useState(true);
 
+  // Helper ensures a profile exists for the given user
+  const ensureProfile = async (authUser) => {
+    if (!authUser) return null;
+
+    const existing = await fetchProfile(authUser.id);
+    if (existing) return existing;
+
+    const defaultUsername = authUser.email
+      ? authUser.email.split('@')[0]
+      : 'anonymous';
+
+    await supabase.from('profiles').insert({
+      id: authUser.id,
+      username: defaultUsername,
+      display_name: defaultUsername,
+    });
+
+    const profileData = {
+      id: authUser.id,
+      username: defaultUsername,
+      display_name: defaultUsername,
+      email: authUser.email,
+    };
+
+    setProfile(profileData);
+    return profileData;
+  };
+
   // 🔁 Refresh session on mount
   useEffect(() => {
     const getSession = async () => {
@@ -17,7 +45,7 @@ export function AuthProvider({ children }) {
       setLoading(false);
 
       if (session?.user) {
-        await fetchProfile(session.user.id);
+        await ensureProfile(session.user);
       }
     };
 
@@ -26,7 +54,7 @@ export function AuthProvider({ children }) {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        ensureProfile(session.user);
       } else {
         setProfile(null);
       }
@@ -86,40 +114,9 @@ export function AuthProvider({ children }) {
       // Immediately store the authenticated user
       setUser(user);
 
-      // Load the profile so display name and username are available
+      // Ensure a profile exists for this account
+      await ensureProfile(user);
 
-      let loadedProfile = await fetchProfile(user.id);
-
-      // If no profile exists (e.g. the account was created elsewhere),
-      // create one so the rest of the app can rely on profile fields. Without
-      // a matching profile row, inserting into `posts` will fail due to the
-      // foreign key constraint on `posts.user_id`.
-
-      if (!loadedProfile) {
-        const defaultUsername = user.email
-          ? user.email.split('@')[0]
-          : 'anonymous';
-
-
-        const { data: newProfile, error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: user.id,
-            username: defaultUsername,
-            display_name: defaultUsername,
-          })
-          .select()
-          .single();
-
-        if (!insertError && newProfile) {
-          // Immediately populate state with the newly created profile
-          loadedProfile = { ...newProfile, email: user.email };
-          setProfile(loadedProfile);
-        } else {
-          console.error('Failed to create default profile:', insertError);
-        }
-
-      }
     }
 
     return { error };
