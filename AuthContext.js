@@ -85,8 +85,31 @@ export function AuthProvider({ children }) {
     if (user) {
       // Immediately store the authenticated user
       setUser(user);
+
       // Load the profile so display name and username are available
-      await fetchProfile(user.id);
+      const loadedProfile = await fetchProfile(user.id);
+
+      // If no profile exists (e.g. the account was created elsewhere),
+      // create one so the rest of the app can rely on profile fields.
+      if (!loadedProfile) {
+        const defaultUsername = user.email
+          ? user.email.split('@')[0]
+          : 'anonymous';
+
+        await supabase.from('profiles').insert({
+          id: user.id,
+          username: defaultUsername,
+          display_name: defaultUsername,
+        });
+
+        // Immediately populate state with the newly created profile
+        setProfile({
+          id: user.id,
+          username: defaultUsername,
+          display_name: defaultUsername,
+          email: user.email,
+        });
+      }
     }
 
     return { error };
@@ -111,8 +134,12 @@ export function AuthProvider({ children }) {
     if (!error && data) {
       // Merge the Supabase auth email so other screens can rely on it
       const authUser = supabase.auth.user();
-      setProfile({ ...data, email: authUser?.email });
+      const profileData = { ...data, email: authUser?.email };
+      setProfile(profileData);
+      return profileData;
     }
+
+    return null;
   };
 
   const value = {
