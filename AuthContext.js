@@ -85,8 +85,37 @@ export function AuthProvider({ children }) {
     if (user) {
       // Immediately store the authenticated user
       setUser(user);
+
       // Load the profile so display name and username are available
-      await fetchProfile(user.id);
+      let loadedProfile = await fetchProfile(user.id);
+
+      // If no profile exists (e.g. the account was created elsewhere),
+      // create one so the rest of the app can rely on profile fields. Without
+      // a matching profile row, inserting into `posts` will fail due to the
+      // foreign key constraint on `posts.user_id`.
+      if (!loadedProfile) {
+        const defaultUsername = user.email
+          ? user.email.split('@')[0]
+          : 'anonymous';
+
+        const { data: newProfile, error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            username: defaultUsername,
+            display_name: defaultUsername,
+          })
+          .select()
+          .single();
+
+        if (!insertError && newProfile) {
+          // Immediately populate state with the newly created profile
+          loadedProfile = { ...newProfile, email: user.email };
+          setProfile(loadedProfile);
+        } else {
+          console.error('Failed to create default profile:', insertError);
+        }
+      }
     }
 
     return { error };
@@ -111,8 +140,12 @@ export function AuthProvider({ children }) {
     if (!error && data) {
       // Merge the Supabase auth email so other screens can rely on it
       const authUser = supabase.auth.user();
-      setProfile({ ...data, email: authUser?.email });
+      const profileData = { ...data, email: authUser?.email };
+      setProfile(profileData);
+      return profileData;
     }
+
+    return null;
   };
 
   const value = {
