@@ -75,28 +75,26 @@ export default function HomeScreen() {
       .select()
       .single();
 
-    if (error || !data) {
-      // Remove the optimistic post if the request fails
-      setPosts((prev) => prev.filter((p) => p.id !== newPost.id));
+    if (!error && data) {
+      // Update the optimistic post with the real data from Supabase
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === newPost.id
+            ? {
+                ...p,
+                id: data.id,
+                created_at: data.created_at,
+              }
+            : p
+        )
+      );
+
+      // Refresh from the server in the background to stay in sync
+      fetchPosts();
+    } else {
+      // Keep the optimistic post but log the failure
       console.error('Failed to post:', error);
-      return;
     }
-
-    // Update the optimistic post with the real data from Supabase
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === newPost.id
-          ? {
-              ...p,
-              id: data.id,
-              created_at: data.created_at,
-            }
-          : p
-      )
-    );
-
-    // Refresh from the server in the background to stay in sync
-    fetchPosts();
   };
 
   useEffect(() => {
