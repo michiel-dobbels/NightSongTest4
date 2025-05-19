@@ -116,6 +116,7 @@ export function AuthProvider({ children }) {
 
       // Ensure a profile exists for this account
       await ensureProfile(user);
+
     }
 
     return { error };
