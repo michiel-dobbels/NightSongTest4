@@ -1,0 +1,14 @@
+{
+  "name": "political-hub",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start"
+  },
+  "dependencies": {
+    "expo": "~53.0.7",
+    "react": "19.0.0",
+    "react-native": "0.79.2",
+    "@supabase/supabase-js": "^2.37.0"
+  }
+}
