@@ -87,16 +87,19 @@ export function AuthProvider({ children }) {
       setUser(user);
 
       // Load the profile so display name and username are available
+
       let loadedProfile = await fetchProfile(user.id);
 
       // If no profile exists (e.g. the account was created elsewhere),
       // create one so the rest of the app can rely on profile fields. Without
       // a matching profile row, inserting into `posts` will fail due to the
       // foreign key constraint on `posts.user_id`.
+
       if (!loadedProfile) {
         const defaultUsername = user.email
           ? user.email.split('@')[0]
           : 'anonymous';
+
 
         const { data: newProfile, error: insertError } = await supabase
           .from('profiles')
@@ -115,6 +118,7 @@ export function AuthProvider({ children }) {
         } else {
           console.error('Failed to create default profile:', insertError);
         }
+
       }
     }
 
