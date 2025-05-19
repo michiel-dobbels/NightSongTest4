@@ -1,5 +1,5 @@
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import { View, Text } from 'react-native';
+import { View, Text, Button } from 'react-native';
 import { SafeAreaView, StatusBar } from 'react-native';
 import { useAuth } from '../AuthContext';
 import HomeScreen from './screens/HomeScreen';
@@ -20,7 +20,7 @@ const Tab = createMaterialTopTabNavigator();
 
 export default function TopTabsNavigator() {
 
-  const { profile, user } = useAuth() as any;
+  const { profile, user, signOut } = useAuth() as any;
 
   const displayName = profile?.display_name || profile?.username;
 
@@ -38,6 +38,9 @@ export default function TopTabsNavigator() {
       <Text style={{ color: 'white', textAlign: 'center', marginTop: 10 }}>
         {welcomeText}
       </Text>
+      <View style={{ alignItems: 'center', marginTop: 10 }}>
+        <Button title="Logout" onPress={signOut} />
+      </View>
       <Tab.Navigator
         screenOptions={{
           tabBarStyle: {

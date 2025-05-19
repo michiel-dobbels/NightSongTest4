@@ -37,7 +37,7 @@ function AuthPage() {
         if (error) throw error;
       }
 
-      navigation.navigate('Tabs'); // ✅ only after successful login/signup
+      // Navigator will switch to the Tabs stack once the user state updates
     } catch (err) {
       setError(err.message);
     }
