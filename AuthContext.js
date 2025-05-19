@@ -8,6 +8,34 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null); // 🧠 includes username
   const [loading, setLoading] = useState(true);
 
+  // Helper ensures a profile exists for the given user
+  const ensureProfile = async (authUser) => {
+    if (!authUser) return null;
+
+    const existing = await fetchProfile(authUser.id);
+    if (existing) return existing;
+
+    const defaultUsername = authUser.email
+      ? authUser.email.split('@')[0]
+      : 'anonymous';
+
+    await supabase.from('profiles').insert({
+      id: authUser.id,
+      username: defaultUsername,
+      display_name: defaultUsername,
+    });
+
+    const profileData = {
+      id: authUser.id,
+      username: defaultUsername,
+      display_name: defaultUsername,
+      email: authUser.email,
+    };
+
+    setProfile(profileData);
+    return profileData;
+  };
+
   // 🔁 Refresh session on mount
   useEffect(() => {
     const getSession = async () => {
@@ -17,7 +45,7 @@ export function AuthProvider({ children }) {
       setLoading(false);
 
       if (session?.user) {
-        await fetchProfile(session.user.id);
+        await ensureProfile(session.user);
       }
     };
 
@@ -26,7 +54,7 @@ export function AuthProvider({ children }) {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        ensureProfile(session.user);
       } else {
         setProfile(null);
       }
@@ -85,8 +113,9 @@ export function AuthProvider({ children }) {
     if (user) {
       // Immediately store the authenticated user
       setUser(user);
-      // Load the profile so display name and username are available
-      await fetchProfile(user.id);
+
+      // Ensure a profile exists for this account
+      await ensureProfile(user);
     }
 
     return { error };
@@ -111,8 +140,12 @@ export function AuthProvider({ children }) {
     if (!error && data) {
       // Merge the Supabase auth email so other screens can rely on it
       const authUser = supabase.auth.user();
-      setProfile({ ...data, email: authUser?.email });
+      const profileData = { ...data, email: authUser?.email };
+      setProfile(profileData);
+      return profileData;
     }
+
+    return null;
   };
 
   const value = {
