@@ -8,7 +8,8 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null); // 🧠 includes username
   const [loading, setLoading] = useState(true);
 
-  // Helper ensures a profile exists for the given user
+  // Helper ensures a profile exists for the given user so posts can
+  // reference it without foreign-key errors
   const ensureProfile = async (authUser) => {
     if (!authUser) return null;
 
@@ -45,6 +46,7 @@ export function AuthProvider({ children }) {
       setLoading(false);
 
       if (session?.user) {
+        // Ensure a profile exists so posting doesn't hit foreign-key errors
         await ensureProfile(session.user);
       }
     };
@@ -54,6 +56,7 @@ export function AuthProvider({ children }) {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
+        // Refresh or create the profile for consistent posting
         ensureProfile(session.user);
       } else {
         setProfile(null);
@@ -76,30 +79,8 @@ export function AuthProvider({ children }) {
       // Immediately store the authenticated user
       setUser(user);
 
-      // Load the profile so display name and username are available
-      const loadedProfile = await fetchProfile(user.id);
-
-      // If no profile exists (e.g. the account was created elsewhere),
-      // create one so the rest of the app can rely on profile fields.
-      if (!loadedProfile) {
-        const defaultUsername = user.email
-          ? user.email.split('@')[0]
-          : 'anonymous';
-
-        await supabase.from('profiles').insert({
-          id: user.id,
-          username: defaultUsername,
-          display_name: defaultUsername,
-        });
-
-        // Immediately populate state with the newly created profile
-        setProfile({
-          id: user.id,
-          username: defaultUsername,
-          display_name: defaultUsername,
-          email: user.email,
-        });
-      }
+      // Create/load the profile so posts have the foreign key ready
+      await ensureProfile(user);
     }
 
     return { error };
