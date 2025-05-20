@@ -111,11 +111,16 @@ export function AuthProvider({ children }) {
 
     const userId = newUser?.id;
     if (userId) {
-      await supabase.from('profiles').insert({
+      const { error: insertError } = await supabase.from('profiles').insert({
         id: userId,
         username,
         display_name: username,
       });
+
+      if (insertError) {
+        console.error('❌ Profile insert error:', insertError);
+        return { error: insertError };
+      }
 
       // Immediately store the authenticated user and profile
       setUser(newUser);
@@ -125,9 +130,12 @@ export function AuthProvider({ children }) {
         display_name: username,
         email: newUser.email,
       });
+
+      return { error: null };
     }
 
-    return { error: null };
+    // No userId should rarely happen, but surface an error if it does
+    return { error: { message: 'User ID missing after sign up' } };
   };
 
 
