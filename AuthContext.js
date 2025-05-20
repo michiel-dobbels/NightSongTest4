@@ -52,12 +52,13 @@ export function AuthProvider({ children }) {
       // supabase-js v1 exposes `session()` to fetch the current session
       const session = supabase.auth.session();
       setUser(session?.user ?? null);
-      setLoading(false);
 
       if (session?.user) {
         // Ensure a profile exists so posting doesn't hit foreign-key errors
         await ensureProfile(session.user);
       }
+
+      setLoading(false);
     };
 
     getSession();
@@ -129,6 +130,7 @@ export function AuthProvider({ children }) {
       if (insertError) {
         // The insert can fail if policies aren't set up yet
         console.error('Failed to insert profile on sign up:', insertError);
+
       }
 
       // Immediately store the authenticated user and profile
@@ -139,9 +141,12 @@ export function AuthProvider({ children }) {
         display_name: username,
         email: newUser.email,
       });
+
+      return { error: null };
     }
 
-    return { error: null };
+    // No userId should rarely happen, but surface an error if it does
+    return { error: { message: 'User ID missing after sign up' } };
   };
 
 
