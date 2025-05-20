@@ -17,19 +17,20 @@ export function AuthProvider({ children }) {
     const existing = await fetchProfile(authUser.id);
     if (existing) return existing;
 
-    // Fall back to metadata or the email prefix if no profile exists
-    const metaUsername = authUser.user_metadata?.username;
-    const defaultUsername = metaUsername
-      ? metaUsername
-      : authUser.email
-      ? authUser.email.split('@')[0]
-      : 'anonymous';
+
+    const defaultUsername =
+      authUser.user_metadata?.username ||
+      (authUser.email ? authUser.email.split('@')[0] : 'anonymous');
+    const defaultDisplayName =
+      authUser.user_metadata?.display_name ||
+      defaultUsername;
+
 
     // Create a new profile with the provided or derived username
     const { error } = await supabase.from('profiles').insert({
       id: authUser.id,
       username: defaultUsername,
-      display_name: defaultUsername,
+      display_name: defaultDisplayName,
     });
 
     // Log any insertion error for easier debugging
@@ -38,7 +39,7 @@ export function AuthProvider({ children }) {
     const profileData = {
       id: authUser.id,
       username: defaultUsername,
-      display_name: defaultUsername,
+      display_name: defaultDisplayName,
       email: authUser.email,
     };
 
