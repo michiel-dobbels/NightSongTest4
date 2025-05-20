@@ -20,11 +20,16 @@ export function AuthProvider({ children }) {
       ? authUser.email.split('@')[0]
       : 'anonymous';
 
-    await supabase.from('profiles').insert({
+    const { error: insertErr } = await supabase.from('profiles').insert({
       id: authUser.id,
       username: defaultUsername,
       display_name: defaultUsername,
     });
+
+    if (insertErr) {
+      console.error('❌ ensureProfile insert error:', insertErr);
+      return null;
+    }
 
     const profileData = {
       id: authUser.id,
