@@ -43,12 +43,13 @@ export function AuthProvider({ children }) {
       // supabase-js v1 exposes `session()` to fetch the current session
       const session = supabase.auth.session();
       setUser(session?.user ?? null);
-      setLoading(false);
 
       if (session?.user) {
         // Ensure a profile exists so posting doesn't hit foreign-key errors
         await ensureProfile(session.user);
       }
+
+      setLoading(false);
     };
 
     getSession();
