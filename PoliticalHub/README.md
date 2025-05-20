@@ -23,5 +23,7 @@ Remember to replace the Supabase credentials in `src/supabase.js` with your proj
 Run the SQL files found in the `sql/` directory using the Supabase dashboard.
 
 1. Open your project in Supabase and go to the **SQL editor**.
+<
 2. Create a new query and paste in the contents of `sql/setup.sql` and `sql/profiles.sql`.
 3. Execute the query to set up the tables and policies.
+
