@@ -16,20 +16,23 @@ export function AuthProvider({ children }) {
     const existing = await fetchProfile(authUser.id);
     if (existing) return existing;
 
-    const defaultUsername = authUser.email
-      ? authUser.email.split('@')[0]
-      : 'anonymous';
+    const defaultUsername =
+      authUser.user_metadata?.username ||
+      (authUser.email ? authUser.email.split('@')[0] : 'anonymous');
+    const defaultDisplayName =
+      authUser.user_metadata?.display_name ||
+      defaultUsername;
 
     await supabase.from('profiles').insert({
       id: authUser.id,
       username: defaultUsername,
-      display_name: defaultUsername,
+      display_name: defaultDisplayName,
     });
 
     const profileData = {
       id: authUser.id,
       username: defaultUsername,
-      display_name: defaultUsername,
+      display_name: defaultDisplayName,
       email: authUser.email,
     };
 
