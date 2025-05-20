@@ -13,18 +13,27 @@ export function AuthProvider({ children }) {
   const ensureProfile = async (authUser) => {
     if (!authUser) return null;
 
+    // Try to load an existing profile first
     const existing = await fetchProfile(authUser.id);
     if (existing) return existing;
 
-    const defaultUsername = authUser.email
+    // Fall back to metadata or the email prefix if no profile exists
+    const metaUsername = authUser.user_metadata?.username;
+    const defaultUsername = metaUsername
+      ? metaUsername
+      : authUser.email
       ? authUser.email.split('@')[0]
       : 'anonymous';
 
-    await supabase.from('profiles').insert({
+    // Create a new profile with the provided or derived username
+    const { error } = await supabase.from('profiles').insert({
       id: authUser.id,
       username: defaultUsername,
       display_name: defaultUsername,
     });
+
+    // Log any insertion error for easier debugging
+    if (error) console.error('Failed to insert profile:', error);
 
     const profileData = {
       id: authUser.id,
@@ -111,11 +120,16 @@ export function AuthProvider({ children }) {
 
     const userId = newUser?.id;
     if (userId) {
-      await supabase.from('profiles').insert({
+      const { error: insertError } = await supabase.from('profiles').insert({
         id: userId,
         username,
         display_name: username,
       });
+
+      if (insertError) {
+        // The insert can fail if policies aren't set up yet
+        console.error('Failed to insert profile on sign up:', insertError);
+      }
 
       // Immediately store the authenticated user and profile
       setUser(newUser);
@@ -147,9 +161,15 @@ export function AuthProvider({ children }) {
       .single();
 
     if (!error && data) {
-      // Merge the Supabase auth email so other screens can rely on it
       const authUser = supabase.auth.user();
-      const profileData = { ...data, email: authUser?.email };
+      const meta = authUser?.user_metadata || {};
+      const profileData = {
+        ...data,
+        email: authUser?.email,
+        username: data.username || meta.username || authUser?.email?.split('@')[0],
+        display_name:
+          data.display_name || meta.display_name || data.username || meta.username,
+      };
       setProfile(profileData);
       return profileData;
     }
